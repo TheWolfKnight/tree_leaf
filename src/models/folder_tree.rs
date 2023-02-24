@@ -13,54 +13,66 @@ pub struct FolderNode {
 impl FolderNode {
   pub fn new<'a>(path: impl Into<String>) -> Self {
     let mut path: String = path.into();
+    path = path.trim_start_matches("/").replace("\\", "/").to_string();
 
-    let root_name: String = {
-      let path_holder = path.trim_start_matches("/");
-      let mut tmp: Vec<&str> = path_holder.split('/').collect();
-      println!("{}", tmp[0]);
-      let result = tmp[0];
-      tmp.remove(0);
-      result.to_string()
+    let result = Self {
+      name: path.clone(),
+      folders: vec![],
+      files: vec![],
     };
-    path.replace_range(..root_name.len(), "");
 
-    let (nodes, leafs): (FolderTreeList, Vec<&'static str>)
-      = Self::get_tree_structure(path);
+    Self::get_tree_structure(path, &result);
 
-    Self {
-      name: root_name,
-      folders: nodes,
-      files: leafs,
+    result
+  }
+
+  fn get_tree_structure(path: String, first_node: &FolderNode) {
+
+    let mut holder: Vec<(usize, &FolderNode)> = Vec::new();
+    holder.push((0, first_node));
+
+    while !holder.is_empty() {
     }
   }
 
-  fn get_tree_structure(path: String) -> (FolderTreeList, Vec<&'static str>) {
-    (vec![], vec![])
+  fn new_for_tree_gen(name: String) -> Self {
+    Self {
+      name,
+      folders: Vec::new(),
+      files: Vec::new(),
+    }
   }
 
   pub fn contains_file<'a>(&'a self, path: &[&'a str]) -> bool {
     let path_size: usize = path.len();
 
-
-    let node: &FolderNode = self;
+    let mut node: &FolderNode = self;
     let file: &str = path[path_size-1];
     let mut path: Vec<&'a str> = path.try_into().expect("Could not get a Vec from the array");
     path.pop();
 
     for s in path {
-      
-    }
+        match node.folders.iter().find(|f| f.name == s) {
+          Some(n) => node = n,
+          None => return false,
+        }
+      }
 
-    if node.name != file {
-      false
-    } else {
-      true
+    match node.folders.iter().find(|f| f.name == file) {
+      Some(_) => return true,
+      None => return false
     }
-
   }
 
   pub fn contains_folder<'a>(&'a self, path: &[&'a str]) -> bool {
-    todo!();
-  }
+    let mut node: &FolderNode = self;
 
+    for s in path {
+        match node.folders.iter().find(|f| f.name == *s) {
+          Some(n) => node = n,
+          None =>  return false,
+        }
+    }
+    true
+  }
 }

@@ -1,8 +1,39 @@
+#![allow(unused)]
 
 mod services;
 mod models;
 
+use std::io::{Error, self, Read};
+use std::net::{TcpListener, TcpStream};
+use std::str;
+
+fn handle_clinet(stream: Result<TcpStream, Error>) -> () {
+    println!("Got stream");
+    match stream {
+        Ok(mut content) => {
+            let mut stream_buffer: [u8; 512] = [0; 512];
+            let result: Result<usize, Error> = content.read(&mut stream_buffer);
+
+            if let Ok(_) = result {
+                println!("{}", str::from_utf8(&stream_buffer).unwrap());
+            }
+        },
+        Err(_) => println!("Could not get that"),
+    }
+}
+
 fn main() {
+    let listener: io::Result<TcpListener> = TcpListener::bind("127.0.0.1:6942");
+
+    match listener {
+        Ok(list) => {
+            println!("Connected");
+            for stream in list.incoming() {
+                handle_clinet(stream);
+            }
+        },
+        Err(_) => println!("Could not connect!"),
+    }
 }
 
 #[cfg(test)]
@@ -31,10 +62,10 @@ mod tests {
 
      #[test]
      fn folder_tree_instance() {
-        let path: &str = "/home";
+        let path: &str = "C:/";
         let folder_tree: FolderNode = FolderNode::new(path);
 
-        assert_eq!(folder_tree.name,     "home");
+        assert_eq!(folder_tree.name,       path);
         assert_eq!(folder_tree.files.len(),   0);
         assert_eq!(folder_tree.folders.len(), 0);
      }
