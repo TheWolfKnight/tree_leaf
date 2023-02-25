@@ -1,52 +1,54 @@
 #![allow(unused)]
 
-mod services;
-mod models;
-
 use std::{
   io::{Error, Read, Write, self},
   net::{TcpListener, TcpStream, self},
   process::exit,
   sync::Mutex,
-  str,
+  str
 };
 
-fn handle_conncetion(stream: &Mutex<TcpStream>) -> () {
-  println!("got stream");
-  let mut stream = stream.lock().unwrap();
-  let mut stream_buffer: [u8; 512] = [0; 512];
-  let read: io::Result<usize> = stream.read(&mut stream_buffer);
+mod services;
+mod models;
 
-  match read {
-    Ok(_) => println!("{}", str::from_utf8(&stream_buffer).unwrap()),
-    Err(_) => println!("Could not read"),
-  }
+use models::ThreadPool;
 
-  stream.write(b"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><body><h1>Hello world!</h1></body></html>");
-  let send: io::Result<()> = stream.flush();
+fn handle_conncetion(mut stream: TcpStream) {
+  let mut buffer = [0; 1024];
+  stream.read(&mut buffer).unwrap();
 
-  match send {
-    Ok(_) => println!("Bytes send"),
-    Err(_) => println!("Could not send bytes"),
-  }
+  let get = b"GET / HTTP/1.1\r\n";
+
+  let (status_line, filename) = if buffer.starts_with(get) {
+    ("HTTP/1.1 200 OK", "<html><body><h1>Hello, world!</h1></body></html>")
+  } else {
+    ("HTTP/1.1 404 NOT FOUND", "<html><body><h1>Page Not Found</h1></body></html>")
+  };
+
+  let content = filename;
+
+  let response = format!(
+    "{}\r\nContent-Length: {}\r\n\r\n{}",
+    status_line,
+    content.len(),
+    content,
+  );
+
+  stream.write(response.as_bytes()).unwrap();
+  stream.flush().unwrap();
 }
 
+
 fn main() {
-  let listener: io::Result<TcpListener> = TcpListener::bind("127.0.0.1:6942");
-  match listener {
-  Ok(list) => {
-    println!("Connected");
-    for stream in list.incoming() {
-      match stream {
-        Ok(mut tcp_stream) => {
-          let protected_strem: Mutex<TcpStream> = Mutex::new(tcp_stream);
-          handle_conncetion(&protected_strem);
-        },
-        Err(_) => todo!(),
-      }
-    }
-  },
-    Err(_) => println!("Could not connect!"),
+  let listener = TcpListener::bind("127.0.0.1:6942").unwrap();
+  let pool = ThreadPool::new(4);
+
+  for stream in listener.incoming() {
+    let stream = stream.unwrap();
+
+    pool.exceute(|| {
+      handle_conncetion(stream);
+    });
   }
 }
 
