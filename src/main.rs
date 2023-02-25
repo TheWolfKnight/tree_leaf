@@ -5,13 +5,14 @@ use std::{
   net::{TcpListener, TcpStream, self},
   process::exit,
   sync::Mutex,
+  env,
   str
 };
 
 mod services;
 mod models;
 
-use models::ThreadPool;
+use models::{Settings, ThreadPool};
 
 fn handle_conncetion(mut stream: TcpStream) {
   let mut buffer = [0; 1024];
@@ -38,10 +39,35 @@ fn handle_conncetion(mut stream: TcpStream) {
   stream.flush().unwrap();
 }
 
+fn setup<'a>() -> Settings<'a> {
+  let mut args: Vec<String> = env::args().rev().collect();
+  let mut result = Settings::new();
+
+  args.pop();
+  let mut count: i32 = 0;
+
+  loop {
+    let com = args.pop();
+    match com {
+      Some(c) => {
+      },
+      None => break,
+    }
+    count += 1;
+  }
+
+  if count == 0 {
+    panic!("Could not finde an execution mode");
+  }
+
+  return result;
+}
 
 fn main() {
-  let listener = TcpListener::bind("127.0.0.1:6942").unwrap();
-  let pool = ThreadPool::new(4);
+  let settings: Settings = setup();
+
+  let listener = TcpListener::bind(settings.target).unwrap();
+  let pool = ThreadPool::new(settings.worker_pool_size);
 
   for stream in listener.incoming() {
     let stream = stream.unwrap();
