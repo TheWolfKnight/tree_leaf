@@ -5,6 +5,7 @@ use std::{
   net::{TcpListener, TcpStream, self},
   process::exit,
   sync::{Arc, Mutex, MutexGuard},
+  env,
   str,
 };
 
@@ -54,7 +55,7 @@ fn handle_conncetion<'a>(mut stream: TcpStream, folder_tree: &'a Arc<Mutex<Folde
   stream.flush().unwrap();
 }
 
-fn setup<'a>() -> Settings<'a> {
+fn setup() -> Settings {
   let mut args: Vec<String> = env::args().rev().collect();
   let mut result = Settings::new();
 
