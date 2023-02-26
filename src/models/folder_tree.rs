@@ -21,7 +21,7 @@ impl FolderNode {
       files: vec![],
     };
 
-    Self::get_tree_structure(path, &result);
+    //Self::get_tree_structure(path, &result);
 
     result
   }

@@ -1,27 +1,44 @@
 #![allow(unused)]
 
+
 use std::{
   io::{Error, Read, Write, self},
   net::{TcpListener, TcpStream, self},
   process::exit,
-  sync::Mutex,
+  sync::{Arc, Mutex, MutexGuard},
   env,
-  str
+  str,
 };
 
 mod services;
 mod models;
 
-use models::{Settings, ThreadPool};
+use models::{Settings, ThreadPool, FolderNode};
 
-fn handle_conncetion(mut stream: TcpStream) {
+fn read_file_to_end(buffer: &mut [u8]) -> usize {
+  todo!();
+}
+
+fn handle_conncetion<'a>(mut stream: TcpStream, folder_tree: &'a Arc<Mutex<FolderNode>>) {
+  println!("handle_conncetion");
+
+  let folder_tree_locked = folder_tree.lock();
+
   let mut buffer = [0; 1024];
   stream.read(&mut buffer).unwrap();
 
   let get = b"GET / HTTP/1.1\r\n";
 
-  let (status_line, filename) = if buffer.starts_with(get) {
-    ("HTTP/1.1 200 OK", "<html><body><h1>Hello, world!</h1></body></html>")
+  if let Err(_e) = &folder_tree_locked {
+    println!("Could net get tree");
+  } 
+
+  let inner_tree: MutexGuard<FolderNode> = folder_tree_locked.ok().unwrap();
+
+  let contains_index: bool = inner_tree.contains_file(&["index.html"]);
+  
+  let (status_line, filename) = if buffer.starts_with(get) && contains_index {
+    ("HTTP/1.1 200 OK", "<html><body><h1>Hello world</h1></body></html>")
   } else {
     ("HTTP/1.1 404 NOT FOUND", "<html><body><h1>Page Not Found</h1></body></html>")
   };
@@ -42,6 +59,8 @@ fn handle_conncetion(mut stream: TcpStream) {
 fn setup<'a>() -> Settings<'a> {
   let mut args: Vec<String> = env::args().rev().collect();
   let mut result = Settings::new();
+
+  return result;
 
   args.pop();
   let mut count: i32 = 0;
@@ -66,14 +85,22 @@ fn setup<'a>() -> Settings<'a> {
 fn main() {
   let settings: Settings = setup();
 
+  println!("settings done");
+
   let listener = TcpListener::bind(settings.target).unwrap();
   let pool = ThreadPool::new(settings.worker_pool_size);
 
+  println!("building tree");
+  let mut folder_tree: Arc<Mutex<FolderNode>> = Arc::new(Mutex::new(FolderNode::new(settings.prefix)));
+  println!("done with tree");
+
   for stream in listener.incoming() {
+    println!("stream listener");
     let stream = stream.unwrap();
 
-    pool.exceute(|| {
-      handle_conncetion(stream);
+    let input = handle_conncetion(stream, &folder_tree);
+    pool.exceute(move || {
+      input
     });
   }
 }
