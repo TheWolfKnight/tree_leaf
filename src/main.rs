@@ -18,7 +18,7 @@ fn read_file_to_end(buffer: &mut [u8]) -> usize {
   todo!();
 }
 
-fn handle_conncetion<'a>(mut stream: TcpStream, folder_tree: &'a Arc<Mutex<FolderNode>>) {
+fn handle_conncetion(mut stream: TcpStream, folder_tree: &Arc<Mutex<FolderNode>>) {
   println!("handle_conncetion");
 
   let folder_tree_locked = folder_tree.lock();
@@ -55,11 +55,26 @@ fn handle_conncetion<'a>(mut stream: TcpStream, folder_tree: &'a Arc<Mutex<Folde
   stream.flush().unwrap();
 }
 
+fn display_help() {
+  println!("Tree Leaf is a webserver writen in Rust. It was writen not to be the best, but just to be.");
+  println!("This is just a project I did for fun, so if this does not work well, or fast, then don't @ me");
+  println!("-----------------------------------------------------");
+  println!("tree_leaf {{mode}} [args]");
+  println!("-----------------------------------------------------");
+  println!("modes:");
+  println!("\thelp:\t\t\t\tDiplayes this message");
+  println!("\tserve:\t\t\t\tStarts the server function of the program");
+  println!("-----------------------------------------------------");
+  println!("args:");
+  println!("\t-t|--target:\t\tSets the target ip/port for the webserver to lunch to");
+  println!("\t-p|--path:\t\t\tSets the path for the target directory, for which the website files are aquired");
+  println!("-----------------------------------------------------");
+  exit(1);
+}
+
 fn setup() -> Settings {
   let mut args: Vec<String> = env::args().rev().collect();
   let mut result = Settings::new();
-
-  return result;
 
   args.pop();
   let mut count: i32 = 0;
@@ -67,7 +82,14 @@ fn setup() -> Settings {
   loop {
     let com = args.pop();
     match com {
-      Some(c) => {
+      Some(mut c) => {
+        c = c.to_lowercase();
+        if c == "help".to_string() {
+          display_help();
+        } else if c == "serve".to_string() {
+        } else {
+          display_help();
+        }
       },
       None => break,
     }
@@ -75,7 +97,7 @@ fn setup() -> Settings {
   }
 
   if count == 0 {
-    panic!("Could not finde an execution mode");
+    display_help();
   }
 
   return result;
