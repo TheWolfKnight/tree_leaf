@@ -1,12 +1,10 @@
 #![allow(unused)]
 
-
 use std::{
   io::{Error, Read, Write, self},
   net::{TcpListener, TcpStream, self},
   process::exit,
   sync::{Arc, Mutex, MutexGuard},
-  env,
   str,
 };
 
