@@ -32,12 +32,12 @@ impl Settings {
     }
   }
 
-  pub fn set_target(&mut self, target: String) -> () {
-    self.target = target;
+  pub fn set_target<T: Into<String>>(&mut self, target: T) -> () {
+    self.target = target.into();
   }
 
-  pub fn set_prefix(&mut self, prefix: String) -> () {
-    self.prefix = prefix;
+  pub fn set_prefix<T: Into<String>>(&mut self, prefix: T) -> () {
+    self.prefix = prefix.into();
   }
 
   pub fn set_verbose(&mut self, is_verbose: bool) -> () {

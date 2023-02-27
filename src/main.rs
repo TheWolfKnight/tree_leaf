@@ -19,8 +19,6 @@ fn read_file_to_end(buffer: &mut [u8]) -> usize {
 }
 
 fn handle_conncetion(mut stream: TcpStream, folder_tree: &Arc<Mutex<FolderNode>>) {
-  println!("handle_conncetion");
-
   let folder_tree_locked = folder_tree.lock();
 
   let mut buffer = [0; 1024];
@@ -35,11 +33,13 @@ fn handle_conncetion(mut stream: TcpStream, folder_tree: &Arc<Mutex<FolderNode>>
   let inner_tree: MutexGuard<FolderNode> = folder_tree_locked.ok().unwrap();
 
   let contains_index: bool = inner_tree.contains_file(&["index.html"]);
-  
-  let (status_line, filename) = if buffer.starts_with(get) && contains_index {
-    ("HTTP/1.1 200 OK", "<html><body><h1>Hello world</h1></body></html>")
-  } else {
-    ("HTTP/1.1 404 NOT FOUND", "<html><body><h1>Page Not Found</h1></body></html>")
+
+  let (status_line, filename) = {
+    if buffer.starts_with(get) && contains_index {
+      ("HTTP/1.1 200 OK", "<html><body><h1>Hello world</h1></body></html>")
+    } else {
+      ("HTTP/1.1 404 NOT FOUND", "<html><body><h1>Page Not Found</h1></body></html>")
+    }
   };
 
   let content = filename;
@@ -78,6 +78,7 @@ fn setup() -> Settings {
 
   args.pop();
   let mut count: i32 = 0;
+  let mut serving: bool = false;
 
   loop {
     let com = args.pop();
@@ -87,8 +88,27 @@ fn setup() -> Settings {
         if c == "help".to_string() {
           display_help();
         } else if c == "serve".to_string() {
-        } else {
-          display_help();
+          serving = true
+        } else if serving {
+          if c == "-p".to_string() || c == "--path".to_string() {
+            let arg = args.pop();
+
+            if arg.is_none() {
+              display_help();
+            }
+            let arg_val = arg.unwrap();
+            result.set_target(arg_val);
+          } else if c == "-t".to_string() || c == "--target".to_string() {
+            let arg = args.pop();
+
+            if arg.is_none() {
+              display_help();
+            }
+            let arg_val = arg.unwrap();
+            result.set_prefix(arg_val);
+          } else {
+            display_help();
+          }
         }
       },
       None => break,
@@ -106,17 +126,12 @@ fn setup() -> Settings {
 fn main() {
   let settings: Settings = setup();
 
-  println!("settings done");
-
   let listener = TcpListener::bind(settings.target).unwrap();
   let pool = ThreadPool::new(settings.worker_pool_size);
 
-  println!("building tree");
   let mut folder_tree: Arc<Mutex<FolderNode>> = Arc::new(Mutex::new(FolderNode::new(settings.prefix)));
-  println!("done with tree");
 
   for stream in listener.incoming() {
-    println!("stream listener");
     let stream = stream.unwrap();
 
     let input = handle_conncetion(stream, &folder_tree);
@@ -131,6 +146,7 @@ mod tests {
   use crate::services::WebPath;
   use crate::services::Server;
   use crate::models::FolderNode;
+
   #[test]
   fn web_server_path_parse() {
     let prefix: &str = "/home/www/www.test.com/";
@@ -138,12 +154,14 @@ mod tests {
     let web_path_result: Option<Vec<&str>> = web_path.parse_path("/home/www/www.test.com/hello/world.html");
     assert_eq!(web_path_result, Some(vec!["hello", "world.html"]));
   }
+
   #[test]
   fn server_ipv4_parsing() {
     let prefix: &str = "/home/www/www.test.com/";
     let server: Server = Server::new([127, 0, 0, 1], prefix);
     assert_eq!(Ok(server.connection), "127.0.0.1".parse())
   }
+
    #[test]
   fn folder_tree_instance() {
     let path: &str = "C:/";
